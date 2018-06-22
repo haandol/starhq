@@ -1,1 +1,1 @@
-# star-framework
+# starhq
