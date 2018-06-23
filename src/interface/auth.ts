@@ -1,7 +1,7 @@
 export namespace Auth {
 
-  export const CLIENT_ID = '58c77eda-f7a0-432c-82b0-0e340ba44791';
-  export const CLIENT_SECRET = 'c4fe05eccf764accb0521aa86c0c1a09';
+  export const CLIENT_ID = process.env.CLIENT_ID || '58c77eda-f7a0-432c-82b0-0e340ba44791';
+  export const CLIENT_SECRET = process.env.CLIENT_SECRET || 'c4fe05eccf764accb0521aa86c0c1a09';
 
   export interface Payload {
     clientId: string;

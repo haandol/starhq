@@ -26,6 +26,8 @@ I personally you recommend to use `Controller - Service - Repository` structure 
 
   | Name | Default | Description
   |------|-------|-------|
+  | CLIENT_ID | YOUR_ID | |
+  | CLIENT_SECRET | YOUR_SECRET | |
   | CONSUL_URL | consul | |
   | CONSUL_PORT | "8500" | |
   | CONSUL_TOKEN | 01CE1A0F-F2CB-3BA5-B21F-3048816B5928 | |
