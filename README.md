@@ -22,6 +22,22 @@ I personally you recommend to use `Controller - Service - Repository` structure 
 - Service takes the responsilbilty for all the business logics.
 - Repository takes the responsibility for dealing with Storages like MongoDB, Redis, Consul, etc.
 
+### Available Environments
+
+  | Name | Default | Description
+  |------|-------|-------|
+  | CONSUL_URL | consul | |
+  | CONSUL_PORT | "8500" | |
+  | CONSUL_TOKEN | 01CE1A0F-F2CB-3BA5-B21F-3048816B5928 | |
+  | MQ_URL | rabbitmq | |
+  | MQ_PORT | "5672" | |
+  | MONGO_URL | mongo | |
+  | MONGO_PORT | "27017" | |
+  | MONGO_DB | test | |
+  | LOG_LEVEL | debug | |
+
+### Example
+
 ```typescript
 
 // app.ts
