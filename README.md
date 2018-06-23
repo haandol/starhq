@@ -22,7 +22,7 @@ I personally you recommend to use `Controller - Service - Repository` structure 
 - Service takes the responsilbilty for all the business logics.
 - Repository takes the responsibility for dealing with Storages like MongoDB, Redis, Consul, etc.
 
-### Available Environments
+### Available Environment Variable
 
   | Name | Default | Description
   |------|-------|-------|
