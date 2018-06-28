@@ -86,7 +86,11 @@ export class MessageDust {
           logger.error(err);
           this.rpcChannel.sendToQueue(
             msg.properties.replyTo,
-            new Buffer(JSON.stringify({success: false, msg: err.toString()})),
+            new Buffer(JSON.stringify({
+              success: false,
+              code: err.code,
+              message: err.toString()
+            })),
             { correlationId: msg.properties.correlationId, persistent: true }
           );
         }).finally(() => {
@@ -117,7 +121,11 @@ export class MessageDust {
           logger.error(err);
           this.rpcChannel.sendToQueue(
             msg.properties.replyTo,
-            new Buffer(JSON.stringify({success: false, msg: err.toString()})),
+            new Buffer(JSON.stringify({
+              success: false,
+              code: err.code,
+              message: err.toString()
+            })),
             { correlationId: msg.properties.correlationId, persistent: true }
           );
         }).finally(() => {
