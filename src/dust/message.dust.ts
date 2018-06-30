@@ -72,7 +72,7 @@ export class MessageDust {
       this.rpcChannel.consume(rpcName, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: Request = JSON.parse(msg.content.toString());
-          logger.info(`[MessageDust][${msg.properties.correlationId}][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
+          logger.debug(`[MessageDust][${msg.properties.correlationId}][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
           const controllerClass = controllers[rpcName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -107,7 +107,7 @@ export class MessageDust {
       this.rpcChannel.consume(rpcName, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: any = JSON.parse(msg.content.toString());
-          logger.info(`[MessageDust][${msg.properties.correlationId}][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
+          logger.debug(`[MessageDust][${msg.properties.correlationId}][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
           const controllerClass = controllers[rpcName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -143,7 +143,7 @@ export class MessageDust {
       this.eventChannel.consume(this.eventQueue, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: any = JSON.parse(msg.content.toString());
-          logger.info(`[MessageDust][Event@${eventName}] payload: ${msg.content.toString()}`);
+          logger.debug(`[MessageDust][Event@${eventName}] payload: ${msg.content.toString()}`);
           const controllerClass = controllers[eventName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -158,7 +158,7 @@ export class MessageDust {
   }
 
   async invokeRPC(rpcParam: Param.RpcParam): Promise<any> {
-    logger.info(`[MessageDust] Invoke RPC with Param: ${JSON.stringify(rpcParam)}`);
+    logger.debug(`[MessageDust] Invoke RPC with Param: ${JSON.stringify(rpcParam)}`);
 
     const q = await this.rpcChannel.assertQueue('', {exclusive: true});
     const corrId: string = uuid().toString();
@@ -176,29 +176,29 @@ export class MessageDust {
       }
     });
 
-    logger.info(`[MessageDust][${corrId}][${rpcParam.uri}] send request...`);
+    logger.debug(`[MessageDust][${corrId}][${rpcParam.uri}] send request...`);
     await this.rpcChannel.sendToQueue(
       rpcParam.uri,
       new Buffer(JSON.stringify(rpcParam.payload)),
       { correlationId: corrId, replyTo: q.queue, persistent: true }
     );
 
-    logger.info(`[MessageDust][${corrId}][${rpcParam.uri}] Watiting for response...`);
+    logger.debug(`[MessageDust][${corrId}][${rpcParam.uri}] Watiting for response...`);
     return new Bluebird((resolve, reject) => {
       this.responses[corrId] = { resolve, reject };
     }).then((msg: amqp.Message) => {
       const content = JSON.parse(msg.content.toString());
-      logger.info(`[MessageDust][${corrId}][${rpcParam.uri}] Rcvd response: ${msg.content.toString()}`);
+      logger.debug(`[MessageDust][${corrId}][${rpcParam.uri}] Rcvd response: ${msg.content.toString()}`);
       return content;
     }).timeout(Rpc.RPC_TIMEOUT).catch((err) => {
       delete this.responses[corrId];
-      throw new LogicError(ErrorCode.Logic.L0001_RPC_TIMEOUT, `timedout.${Rpc.RPC_TIMEOUT}`);
+      throw new LogicError(ErrorCode.Logic.RPC_TIMEOUT, `timedout.${Rpc.RPC_TIMEOUT}`);
     });
   }
 
   async publishEvent(event: IEvent<any>) {
     const msg: string = JSON.stringify(event);
-    logger.info(`[MessageDust] Publish event: ${msg}`);
+    logger.debug(`[MessageDust] Publish event: ${msg}`);
     this.eventChannel.publish(EXCHANGE, event.key, new Buffer(msg));
   }
 

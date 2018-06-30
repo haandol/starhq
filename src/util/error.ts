@@ -6,14 +6,12 @@ const starCode = 100;
 
 export namespace ErrorCode {
   export enum Logic {
-    L0001_RPC_TIMEOUT = 1,
-    L0002_PARAM_USER_MISSING = 2,
-    L0003_USER_HAS_NO_AUTHORITY = 3,
+    RPC_TIMEOUT = 1,
   }
 
   export enum FATAL {
-    F0001_MISSING_CONSUL_TOKEN = 1,
-    F0002_NOT_INIT_REST_ENDPOINT = 2,
+    MISSING_CONSUL_TOKEN = 1,
+    NOT_INIT_REST_ENDPOINT = 2,
   }
 }
 

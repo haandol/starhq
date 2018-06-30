@@ -32,7 +32,7 @@ export class Star {
 
   private setupConsul(): void {
     const CONSUL_TOKEN = process.env.CONSUL_TOKEN;
-    if (!CONSUL_TOKEN) throw new FatalError(ErrorCode.FATAL.F0001_MISSING_CONSUL_TOKEN, `token.${CONSUL_TOKEN}`);
+    if (!CONSUL_TOKEN) throw new FatalError(ErrorCode.FATAL.MISSING_CONSUL_TOKEN, `token.${CONSUL_TOKEN}`);
     this.consul = Consul({
       host: process.env.CONSUL_URL || 'consul',
       port: process.env.CONSUL_PORT || '8500',
@@ -139,7 +139,7 @@ export class Star {
         const uri = _.replace(endpoint.uri, /\//g, '|');
         const key = `${method}@${uri}`;
         if (!method || !uri) {
-          throw new FatalError(ErrorCode.FATAL.F0002_NOT_INIT_REST_ENDPOINT, `${key}`);
+          throw new FatalError(ErrorCode.FATAL.NOT_INIT_REST_ENDPOINT, `${key}`);
         }
 
         controllers[key] = { clazz: controllerClass, funcName: endpoint.funcName }
