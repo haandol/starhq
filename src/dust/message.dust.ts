@@ -7,7 +7,7 @@ import { IEvent } from '../interface/event';
 import { EXCHANGE, Rpc } from '../interface/constant';
 import { Param } from '../interface/param';
 import { logger } from '../util/logger';
-import { ErrorCode, LogicError } from '../util/error';
+import { ErrorCode, LogicError, FatalError } from '../util/error';
 
 
 export class MessageDust {
@@ -15,10 +15,12 @@ export class MessageDust {
   protected rpcChannel: amqp.Channel;
   protected eventChannel: amqp.Channel;
   protected responses: any = {};
-  protected eventQueue: string;
+  protected workerQueue: string;
+  protected fanoutQueue: string;
  
   constructor(protected serviceName: string) {
-    this.eventQueue = `${this.serviceName}.${uuid()}`;
+    this.workerQueue = `${this.serviceName}`;
+    this.fanoutQueue = `${this.serviceName}.${uuid()}`;
   }
 
   async initialize(): Promise<void> {
@@ -44,8 +46,15 @@ export class MessageDust {
     this.eventChannel = await this.conn.createChannel();
     this.eventChannel.prefetch(1);
 
-    await this.eventChannel.assertExchange(EXCHANGE, 'topic', {durable: true})
-    await this.eventChannel.assertQueue(this.eventQueue, {exclusive: true});
+    try {
+      await this.eventChannel.assertExchange(EXCHANGE, 'topic', {durable: true})
+      await this.eventChannel.assertQueue(this.workerQueue, {autoDelete: true});
+      await this.eventChannel.assertQueue(this.fanoutQueue, {autoDelete: true});
+    } catch (e) {
+      await this.eventChannel.deleteQueue(this.workerQueue);
+      await this.eventChannel.deleteQueue(this.fanoutQueue);
+      throw e
+    }
   }
 
   private async closeQ(): Promise<void> {
@@ -72,7 +81,7 @@ export class MessageDust {
       this.rpcChannel.consume(rpcName, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: Request = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][${msg.properties.correlationId}][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
+          logger.debug(`[MessageDust][REST][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
           const controllerClass = controllers[rpcName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -107,7 +116,7 @@ export class MessageDust {
       this.rpcChannel.consume(rpcName, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: any = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][${msg.properties.correlationId}][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
+          logger.debug(`[MessageDust][RPC][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
           const controllerClass = controllers[rpcName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -132,18 +141,19 @@ export class MessageDust {
           this.rpcChannel.ack(msg);
         });
       });
-
     }
   }
 
-  async consumeEvent(controllers) {
+  async consumeWorkerEvent(controllers) {
     for (const eventName of Object.keys(controllers)) {
-      await this.eventChannel.bindQueue(this.eventQueue, EXCHANGE, eventName);
+      if (0 <= eventName.indexOf('#') || 0 <= eventName.indexOf('*')) throw new FatalError(ErrorCode.FATAL.USE_FANOUT_FOR_PATTERN_SUBSCRIBTION);
 
-      this.eventChannel.consume(this.eventQueue, (msg: amqp.Message) => {
+      await this.eventChannel.bindQueue(this.workerQueue, EXCHANGE, eventName);
+
+      this.eventChannel.consume(this.workerQueue, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: any = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][Event@${eventName}] payload: ${msg.content.toString()}`);
+          logger.debug(`[MessageDust][Worker Event@${eventName}] payload: ${msg.content.toString()}`);
           const controllerClass = controllers[eventName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -153,14 +163,33 @@ export class MessageDust {
           this.eventChannel.ack(msg);
         });
       });
+    }
+  }
 
+  async consumeFanoutEvent(controllers) {
+    for (const eventName of Object.keys(controllers)) {
+      await this.eventChannel.bindQueue(this.fanoutQueue, EXCHANGE, eventName);
+
+      this.eventChannel.consume(this.fanoutQueue, (msg: amqp.Message) => {
+        return Bluebird.try(() => {
+          const payload: any = JSON.parse(msg.content.toString());
+          logger.debug(`[MessageDust][Fanout Event@${eventName}] payload: ${msg.content.toString()}`);
+          const controllerClass = controllers[eventName];
+          const controller = Di.container.get(controllerClass.clazz);
+          return controller[controllerClass.funcName](payload);
+        }).catch((err) => {
+          logger.error(err);
+        }).finally(() => {
+          this.eventChannel.ack(msg);
+        });
+      });
     }
   }
 
   async invokeRPC(rpcParam: Param.RpcParam): Promise<any> {
     logger.debug(`[MessageDust] Invoke RPC with Param: ${JSON.stringify(rpcParam)}`);
 
-    const q = await this.rpcChannel.assertQueue('', {exclusive: true});
+    const q = await this.rpcChannel.assertQueue('', {exclusive: true, autoDelete: true});
     const corrId: string = uuid().toString();
 
     this.rpcChannel.consume(q.queue, (msg: amqp.Message) => {
@@ -192,7 +221,7 @@ export class MessageDust {
       return content;
     }).timeout(Rpc.RPC_TIMEOUT).catch((err) => {
       delete this.responses[corrId];
-      throw new LogicError(ErrorCode.Logic.RPC_TIMEOUT, `timedout.${Rpc.RPC_TIMEOUT}`);
+      throw new LogicError(ErrorCode.Logic.RPC_TIMEOUT);
     });
   }
 

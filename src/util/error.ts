@@ -12,17 +12,20 @@ export namespace ErrorCode {
   export enum FATAL {
     MISSING_CONSUL_TOKEN = 1,
     NOT_INIT_REST_ENDPOINT = 2,
+    USE_FANOUT_FOR_PATTERN_SUBSCRIBTION = 3
   }
 }
 
 export class LogicError extends AbstractFatalError {
-  constructor(errorCode: ErrorCode.Logic, reason: string) {
-    super(starCode, errorCode, reason);
+  constructor(code: ErrorCode.Logic, debugInfo?: any) {
+    super(starCode, code, `HQ-${code}.${ErrorCode.Logic[code]}`);
+    this.extra.debugInfo = debugInfo;
   }
 }
 
 export class FatalError extends AbstractFatalError {
-  constructor(errorCode: ErrorCode.FATAL, reason: string) {
-    super(starCode, errorCode, reason);
+  constructor(code: ErrorCode.FATAL, debugInfo?: any) {
+    super(starCode, code, `HQ-${code}.${ErrorCode.FATAL[code]}`);
+    this.extra.debugInfo = debugInfo;
   }
 }

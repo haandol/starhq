@@ -32,7 +32,7 @@ export class Star {
 
   private setupConsul(): void {
     const CONSUL_TOKEN = process.env.CONSUL_TOKEN;
-    if (!CONSUL_TOKEN) throw new FatalError(ErrorCode.FATAL.MISSING_CONSUL_TOKEN, `token.${CONSUL_TOKEN}`);
+    if (!CONSUL_TOKEN) throw new FatalError(ErrorCode.FATAL.MISSING_CONSUL_TOKEN);
     this.consul = Consul({
       host: process.env.CONSUL_URL || 'consul',
       port: process.env.CONSUL_PORT || '8500',
@@ -77,11 +77,11 @@ export class Star {
     if (kvData < 2) {
       await this.consul.kv.del(`${Rpc.STAR_COUNT}/${this.serviceName}`);
       await this.consul.kv.del({
-        key: `watch/${MetadataKey.rest}/${this.serviceName}`,
+        key: `watch/${MetadataKey.Rest}/${this.serviceName}`,
         recurse: true
       });
       await this.consul.kv.del({
-        key: `watch/${MetadataKey.rpc}/${this.serviceName}`,
+        key: `watch/${MetadataKey.Rpc}/${this.serviceName}`,
         recurse: true
       });
     } else {
@@ -124,13 +124,13 @@ export class Star {
   }
 
   private async registerRestEndpoints(): Promise<void> {
-    logger.info('[Star] Resister rest endpoints.');
+    logger.info('[Star] Register rest endpoints.');
     const consul = this.consul;
-    const controllers = this.controllers[MetadataKey.rest];
+    const controllers = this.controllers[MetadataKey.Rest];
 
-    for (const controllerClass of this.controllerClasses[MetadataKey.rest]) {
-      const endpoints: Metadata.RestMetadata[] = Reflect.getOwnMetadata(
-        MetadataKey.rest, controllerClass
+    for (const controllerClass of this.controllerClasses[MetadataKey.Rest]) {
+      const endpoints: Metadata.Rest[] = Reflect.getOwnMetadata(
+        MetadataKey.Rest, controllerClass
       ) || [];
       logger.info(`[Star] Registering rest endpoints to consul.kv: ${endpoints.length}`);
 
@@ -139,12 +139,12 @@ export class Star {
         const uri = _.replace(endpoint.uri, /\//g, '|');
         const key = `${method}@${uri}`;
         if (!method || !uri) {
-          throw new FatalError(ErrorCode.FATAL.NOT_INIT_REST_ENDPOINT, `${key}`);
+          throw new FatalError(ErrorCode.FATAL.NOT_INIT_REST_ENDPOINT);
         }
 
         controllers[key] = { clazz: controllerClass, funcName: endpoint.funcName }
         await consul.kv.set(
-          `watch/${MetadataKey.rest}/${this.serviceName}/${key}`,
+          `watch/${MetadataKey.Rest}/${this.serviceName}/${key}`,
           JSON.stringify(endpoint.context)
         );
       }
@@ -152,13 +152,13 @@ export class Star {
   }
 
   private async registerRPCEndpoints(): Promise<void> {
-    logger.info('[Star] Resister rpc endpoints.');
+    logger.info('[Star] Register rpc endpoints.');
     const consul = this.consul;
-    const controllers = this.controllers[MetadataKey.rpc];
+    const controllers = this.controllers[MetadataKey.Rpc];
 
-    for (const controllerClass of this.controllerClasses[MetadataKey.rpc]) {
-      const endpoints: Metadata.RpcMetadata[] = Reflect.getOwnMetadata(
-        MetadataKey.rpc, controllerClass
+    for (const controllerClass of this.controllerClasses[MetadataKey.Rpc]) {
+      const endpoints: Metadata.Rpc[] = Reflect.getOwnMetadata(
+        MetadataKey.Rpc, controllerClass
       ) || [];
       logger.info(`[Star] Registering rpc endpoints to consul.kv: ${endpoints.length}`);
 
@@ -166,22 +166,38 @@ export class Star {
         const key = `RPC@${endpoint.funcName}`;
         controllers[key] = { clazz: controllerClass, funcName: endpoint.funcName }
         await consul.kv.set(
-          `watch/${MetadataKey.rpc}/${this.serviceName}/${key}`,
+          `watch/${MetadataKey.Rpc}/${this.serviceName}/${key}`,
           JSON.stringify(endpoint.context)
         );
       }
     }
   }
 
-  private async registerEventEndpoints(): Promise<void> {
-    logger.info('[Star] Resister event endpoints.');
-    const controllers = this.controllers[MetadataKey.event];
+  private async registerWorkerEventEndpoints(): Promise<void> {
+    logger.info('[Star] Register worker event endpoints.');
+    const controllers = this.controllers[MetadataKey.WorkerEvent];
 
-    for (const controllerClass of this.controllerClasses[MetadataKey.event]) {
-      const endpoints: Metadata.EventMetadata[] = Reflect.getOwnMetadata(
-        MetadataKey.event, controllerClass
+    for (const controllerClass of this.controllerClasses[MetadataKey.WorkerEvent]) {
+      const endpoints: Metadata.Event[] = Reflect.getOwnMetadata(
+        MetadataKey.WorkerEvent, controllerClass
       ) || [];
-      logger.info(`[Star] Registering event endpoints: ${endpoints.length}`);
+      logger.info(`[Star] Registering worker event endpoints: ${endpoints.length}`);
+      for (const endpoint of endpoints) {
+        const { key, funcName } = endpoint;
+        controllers[key] = { clazz: controllerClass, funcName: funcName }
+      }
+    }
+  }
+
+  private async registerFanoutEventEndpoints(): Promise<void> {
+    logger.info('[Star] Register fanout event endpoints.');
+    const controllers = this.controllers[MetadataKey.FanoutEvent];
+
+    for (const controllerClass of this.controllerClasses[MetadataKey.FanoutEvent]) {
+      const endpoints: Metadata.Event[] = Reflect.getOwnMetadata(
+        MetadataKey.FanoutEvent, controllerClass
+      ) || [];
+      logger.info(`[Star] Registering fanout event endpoints: ${endpoints.length}`);
       for (const endpoint of endpoints) {
         const { key, funcName } = endpoint;
         controllers[key] = { clazz: controllerClass, funcName: funcName }
@@ -202,13 +218,16 @@ export class Star {
       await this.registerStar();
 
       await this.registerRestEndpoints();
-      await this.messageDust.consumeRest(this.controllers[MetadataKey.rest]);
+      await this.messageDust.consumeRest(this.controllers[MetadataKey.Rest]);
 
       await this.registerRPCEndpoints();
-      await this.messageDust.consumeRPC(this.controllers[MetadataKey.rpc]);
+      await this.messageDust.consumeRPC(this.controllers[MetadataKey.Rpc]);
 
-      await this.registerEventEndpoints();
-      await this.messageDust.consumeEvent(this.controllers[MetadataKey.event]);
+      await this.registerWorkerEventEndpoints();
+      await this.messageDust.consumeWorkerEvent(this.controllers[MetadataKey.WorkerEvent]);
+
+      await this.registerFanoutEventEndpoints();
+      await this.messageDust.consumeFanoutEvent(this.controllers[MetadataKey.FanoutEvent]);
     } catch(err) {
       logger.error('[Star] Failed to run...\n', err);
       process.exit(1);
@@ -216,17 +235,22 @@ export class Star {
   }
 
   registerRestController(controllerClass: any): void {
-    const controllerClasses = this.controllerClasses[MetadataKey.rest];
-    controllerClasses.push(controllerClass);
+    const controllerClasses = this.controllerClasses[MetadataKey.Rest];
+    if (controllerClasses) controllerClasses.push(controllerClass);
   }
 
   registerRpcController(controllerClass: any): void {
-    const controllerClasses = this.controllerClasses[MetadataKey.rpc];
-    controllerClasses.push(controllerClass);
+    const controllerClasses = this.controllerClasses[MetadataKey.Rpc];
+    if (controllerClasses) controllerClasses.push(controllerClass);
   }
 
-  registerEventController(controllerClass: any): void {
-    const controllerClasses = this.controllerClasses[MetadataKey.event];
-    controllerClasses.push(controllerClass);
+  registerWorkerEventController(controllerClass: any): void {
+    const controllerClasses = this.controllerClasses[MetadataKey.WorkerEvent];
+    if (controllerClasses) controllerClasses.push(controllerClass);
+  }
+
+  registerFanoutEventController(controllerClass: any): void {
+    const controllerClasses = this.controllerClasses[MetadataKey.FanoutEvent];
+    if (controllerClasses) controllerClasses.push(controllerClass);
   }
 }

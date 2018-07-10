@@ -4,25 +4,26 @@ export type Method = 'GET' | 'POST' | 'PUT' | 'DEL';
 
 export namespace Metadata {
   export const Key = {
-    rest: 'rest',
-    rpc: 'rpc',
-    event: 'event'
+    Rest: 'Rest',
+    Rpc: 'Rpc',
+    WorkerEvent: 'WorkerEvent',
+    FanoutEvent: 'FanoutEvent'
   }
   export const Keys = _.keys(Key);
 
-  export interface RestMetadata {
+  export interface Rest {
     method: string;
     uri: string;
     funcName: string;
     context: any;
   }
 
-  export interface RpcMetadata {
+  export interface Rpc {
     funcName: string;
     context: any;
   }
 
-  export interface EventMetadata {
+  export interface Event {
     key: string;
     funcName: string;
   }
