@@ -58,6 +58,21 @@ export namespace Decorator {
       }
     }
 
+    export function graph(context?: any) {
+      return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+        const endpoints: Metadata.Graph[] = Reflect.getOwnMetadata(
+          Metadata.Key.Graph, target.constructor
+        ) || [];
+
+        const endpoint: Metadata.Graph = {
+          funcName: propertyKey,
+          context: context || {}
+        };
+        endpoints.push(endpoint);
+        Reflect.defineMetadata(Metadata.Key.Graph, endpoints, target.constructor);
+      }
+    }
+ 
     export function rest(route, context?: any) {
       return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const endpoints: Metadata.Rest[] = Reflect.getOwnMetadata(

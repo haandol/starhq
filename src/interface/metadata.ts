@@ -6,6 +6,8 @@ export namespace Metadata {
   export const Key = {
     Rest: 'Rest',
     Rpc: 'Rpc',
+    Graph: 'Graph',
+    TypeDef: 'TypeDef',
     WorkerEvent: 'WorkerEvent',
     FanoutEvent: 'FanoutEvent'
   }
@@ -14,6 +16,11 @@ export namespace Metadata {
   export interface Rest {
     method: string;
     uri: string;
+    funcName: string;
+    context: any;
+  }
+
+  export interface Graph {
     funcName: string;
     context: any;
   }

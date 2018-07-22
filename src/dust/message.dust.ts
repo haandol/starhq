@@ -144,6 +144,41 @@ export class MessageDust {
     }
   }
 
+  async consumeGraph(controllers) {
+    for (const rpcName of Object.keys(controllers)) {
+      await this.rpcChannel.assertQueue(rpcName, {durable: true});
+
+      this.rpcChannel.consume(rpcName, (msg: amqp.Message) => {
+        return Bluebird.try(() => {
+          const payload: any = JSON.parse(msg.content.toString());
+          logger.debug(`[MessageDust][Graph][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
+          const controllerClass = controllers[rpcName];
+          const controller = Di.container.get(controllerClass.clazz);
+          return controller[controllerClass.funcName](payload);
+        }).then((result) => {
+          this.rpcChannel.sendToQueue(
+            msg.properties.replyTo,
+            new Buffer(JSON.stringify({success: true, data: result})),
+            { correlationId: msg.properties.correlationId, persistent: true }
+          );
+        }).catch((err) => {
+          logger.error(err);
+          this.rpcChannel.sendToQueue(
+            msg.properties.replyTo,
+            new Buffer(JSON.stringify({
+              success: false,
+              code: err.code,
+              message: err.toString()
+            })),
+            { correlationId: msg.properties.correlationId, persistent: true }
+          );
+        }).finally(() => {
+          this.rpcChannel.ack(msg);
+        });
+      });
+    }
+  }
+
   async consumeWorkerEvent(controllers) {
     for (const eventName of Object.keys(controllers)) {
       if (0 <= eventName.indexOf('#') || 0 <= eventName.indexOf('*')) throw new FatalError(ErrorCode.FATAL.USE_FANOUT_FOR_PATTERN_SUBSCRIBTION);

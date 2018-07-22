@@ -17,6 +17,7 @@ export class Star {
  protected consul: Consul.Consul;
   protected controllerClasses: any = {};
   protected controllers: any = {};
+  protected typeDefs: Array<string> = [];
   protected mongoDust: MongoDust;
   protected messageDust: MessageDust;
 
@@ -173,6 +174,40 @@ export class Star {
     }
   }
 
+  private async registerGraphTypeDefs(): Promise<void> {
+    logger.info('[Star] Register graph typedefs.');
+    const consul = this.consul;
+
+    const typeDefs = this.typeDefs;
+    logger.info(`[Star] Registering graph typedefs to consul.kv: ${typeDefs.length}`);
+    await consul.kv.set(
+      `graph/${MetadataKey.Graph}/${this.serviceName}/${MetadataKey.TypeDef}`,
+      JSON.stringify(typeDefs.join('\n'))
+    );
+  }
+
+  private async registerGraphResolvers(): Promise<void> {
+    logger.info('[Star] Register graph endpoints.');
+    const consul = this.consul;
+    const controllers = this.controllers[MetadataKey.Graph];
+
+    for (const controllerClass of this.controllerClasses[MetadataKey.Graph]) {
+      const endpoints: Metadata.Rpc[] = Reflect.getOwnMetadata(
+        MetadataKey.Graph, controllerClass
+      ) || [];
+      logger.info(`[Star] Registering graph endpoints to consul.kv: ${endpoints.length}`);
+
+      for (const endpoint of endpoints) {
+        const key = `Graph@${endpoint.funcName}`;
+        controllers[key] = { clazz: controllerClass, funcName: endpoint.funcName }
+        await consul.kv.set(
+          `graph/${MetadataKey.Graph}/${this.serviceName}/${key}`,
+          JSON.stringify(endpoint.context)
+        );
+      }
+    }
+  }
+
   private async registerWorkerEventEndpoints(): Promise<void> {
     logger.info('[Star] Register worker event endpoints.');
     const controllers = this.controllers[MetadataKey.WorkerEvent];
@@ -223,6 +258,10 @@ export class Star {
       await this.registerRPCEndpoints();
       await this.messageDust.consumeRPC(this.controllers[MetadataKey.Rpc]);
 
+      await this.registerGraphTypeDefs();
+      await this.registerGraphResolvers();
+      await this.messageDust.consumeGraph(this.controllers[MetadataKey.Graph]);
+
       await this.registerWorkerEventEndpoints();
       await this.messageDust.consumeWorkerEvent(this.controllers[MetadataKey.WorkerEvent]);
 
@@ -242,6 +281,15 @@ export class Star {
   registerRpcController(controllerClass: any): void {
     const controllerClasses = this.controllerClasses[MetadataKey.Rpc];
     if (controllerClasses) controllerClasses.push(controllerClass);
+  }
+
+  registerGraphController(controllerClass: any): void {
+    const controllerClasses = this.controllerClasses[MetadataKey.Graph];
+    if (controllerClasses) controllerClasses.push(controllerClass);
+  }
+
+  registerGraphTypeDef(typeDef: any): void {
+    this.typeDefs.push(typeDef);
   }
 
   registerWorkerEventController(controllerClass: any): void {
