@@ -81,7 +81,7 @@ export class MessageDust {
       this.rpcChannel.consume(rpcName, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: Request = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][REST][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
+          logger.debug(`[MessageDust][REST][${rpcName}] payload: ${JSON.stringify(payload)} => ${msg.properties.replyTo}`);
           const controllerClass = controllers[rpcName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -116,11 +116,12 @@ export class MessageDust {
       this.rpcChannel.consume(rpcName, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: any = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][RPC][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
+          logger.debug(`[MessageDust][RPC][${rpcName}] payload: ${JSON.stringify(payload)} => ${msg.properties.replyTo}`);
           const controllerClass = controllers[rpcName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
         }).then((result) => {
+          logger.debug(`[MessageDust][RPC][${rpcName}] response: ${JSON.stringify(result)} => ${msg.properties.replyTo}`);
           this.rpcChannel.sendToQueue(
             msg.properties.replyTo,
             new Buffer(JSON.stringify({success: true, data: result})),
@@ -151,11 +152,12 @@ export class MessageDust {
       this.rpcChannel.consume(rpcName, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: any = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][Graph][${rpcName}] payload: ${msg.content.toString()} => ${msg.properties.replyTo}`);
+          logger.debug(`[MessageDust][Graph][${rpcName}] payload: ${JSON.stringify(payload)} => ${msg.properties.replyTo}`);
           const controllerClass = controllers[rpcName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
         }).then((result) => {
+          logger.debug(`[MessageDust][Graph][${rpcName}] response: ${JSON.stringify(result)} => ${msg.properties.replyTo}`);
           this.rpcChannel.sendToQueue(
             msg.properties.replyTo,
             new Buffer(JSON.stringify({success: true, data: result})),
@@ -188,7 +190,7 @@ export class MessageDust {
       this.eventChannel.consume(this.workerQueue, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: any = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][Worker Event@${eventName}] payload: ${msg.content.toString()}`);
+          logger.debug(`[MessageDust][Worker Event@${eventName}] payload: ${JSON.stringify(payload)}`);
           const controllerClass = controllers[eventName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -208,7 +210,7 @@ export class MessageDust {
       this.eventChannel.consume(this.fanoutQueue, (msg: amqp.Message) => {
         return Bluebird.try(() => {
           const payload: any = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][Fanout Event@${eventName}] payload: ${msg.content.toString()}`);
+          logger.debug(`[MessageDust][Fanout Event@${eventName}] payload: ${JSON.stringify(payload)}`);
           const controllerClass = controllers[eventName];
           const controller = Di.container.get(controllerClass.clazz);
           return controller[controllerClass.funcName](payload);
@@ -252,7 +254,7 @@ export class MessageDust {
       this.responses[corrId] = { resolve, reject };
     }).then((msg: amqp.Message) => {
       const content = JSON.parse(msg.content.toString());
-      logger.debug(`[MessageDust][${corrId}][${rpcParam.uri}] Rcvd response: ${msg.content.toString()}`);
+      logger.debug(`[MessageDust][${corrId}][${rpcParam.uri}] Rcvd response: ${JSON.stringify(content)}`);
       return content;
     }).timeout(Rpc.RPC_TIMEOUT).catch((err) => {
       delete this.responses[corrId];
