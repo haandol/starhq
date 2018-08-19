@@ -9,15 +9,22 @@ function findEndpoint(endpoints: Array<any>, funcName: string): Metadata.Rest | 
 export namespace Decorator {
 
   export namespace Event {
-    export function worker(eventClass: { new(...args): IEvent<any> }) {
+    export function worker(eventClass: { new(...args): IEvent<any> } | string) {
       return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const endpoints: Metadata.Event[] = Reflect.getOwnMetadata(
           Metadata.Key.WorkerEvent, target.constructor
         ) || [];
 
-        const event = new eventClass()
+        let eventKey: string;
+        if (!_.isString(eventClass)) {
+          const event = new eventClass();
+          eventKey = event.key;
+        } else {
+          eventKey = eventClass;
+        }
+
         const endpoint: Metadata.Event = {
-          key: event.key,
+          key: eventKey,
           funcName: propertyKey
         };
         endpoints.push(endpoint);
@@ -25,15 +32,22 @@ export namespace Decorator {
       }
     }
 
-    export function fanout(eventClass: { new(...args): IEvent<any> }) {
+    export function fanout(eventClass: { new(...args): IEvent<any> } | string) {
       return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         const endpoints: Metadata.Event[] = Reflect.getOwnMetadata(
           Metadata.Key.FanoutEvent, target.constructor
         ) || [];
 
-        const event = new eventClass()
+        let eventKey: string;
+        if (!_.isString(eventClass)) {
+          const event = new eventClass();
+          eventKey = event.key;
+        } else {
+          eventKey = eventClass;
+        }
+
         const endpoint: Metadata.Event = {
-          key: event.key,
+          key: eventKey,
           funcName: propertyKey
         };
         endpoints.push(endpoint);
