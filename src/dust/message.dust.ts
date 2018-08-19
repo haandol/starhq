@@ -184,8 +184,6 @@ export class MessageDust {
 
   async consumeWorkerEvent(controllers) {
     for (const eventName of Object.keys(controllers)) {
-      if (0 <= eventName.indexOf('#') || 0 <= eventName.indexOf('*')) throw new FatalError(ErrorCode.FATAL.USE_FANOUT_FOR_PATTERN_SUBSCRIBTION);
-
       await this.eventChannel.bindQueue(this.workerQueue, EXCHANGE, eventName);
 
       this.eventChannel.consume(this.workerQueue, (msg: amqp.Message) => {

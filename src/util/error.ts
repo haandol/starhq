@@ -12,7 +12,6 @@ export namespace ErrorCode {
   export enum FATAL {
     MISSING_CONSUL_TOKEN = 1,
     NOT_INIT_REST_ENDPOINT = 2,
-    USE_FANOUT_FOR_PATTERN_SUBSCRIBTION = 3
   }
 }
 
