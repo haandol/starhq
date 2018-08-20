@@ -1,3 +1,4 @@
+import * as _ from 'lodash';
 import * as uuid from 'uuid/v4';
 import * as amqp from 'amqplib';
 import * as Bluebird from 'bluebird';
@@ -182,44 +183,69 @@ export class MessageDust {
     }
   }
 
+  private getEventKey(cronEvents: string[], key: string): string {
+    const keyParts = key.slice(4).split('.')
+    for (const cronEvent of cronEvents) {
+      const cronParts = cronEvent.slice(4).split('.');
+      let isMatched = false;
+      for (const parts of _.zip(cronParts, keyParts)) {
+        if (parts[0] !== '*' && parts[0] !== parts[1]) {
+          isMatched = false;
+        }
+      }
+      if (isMatched) return cronEvent;
+    }
+    return '';
+  }
+
   async consumeWorkerEvent(controllers) {
+    const cronEvents: string[] = [];
     for (const eventName of Object.keys(controllers)) {
       await this.eventChannel.bindQueue(this.workerQueue, EXCHANGE, eventName);
-
-      this.eventChannel.consume(this.workerQueue, (msg: amqp.Message) => {
-        return Bluebird.try(() => {
-          const payload: any = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][Worker Event@${eventName}][REQ] ${JSON.stringify(payload)}`);
-          const controllerClass = controllers[eventName];
-          const controller = Di.container.get(controllerClass.clazz);
-          return controller[controllerClass.funcName](payload);
-        }).catch((err) => {
-          logger.error(err);
-        }).finally(() => {
-          this.eventChannel.ack(msg);
-        });
-      });
+      if (eventName.startsWith('cron.')) cronEvents.push(eventName);
     }
+
+    this.eventChannel.consume(this.workerQueue, (msg: amqp.Message) => {
+      return Bluebird.try(() => {
+        const payload: any = JSON.parse(msg.content.toString());
+        logger.debug(`[MessageDust][Worker Event@${payload.key}][REQ] ${JSON.stringify(payload)}`);
+
+        const eventKey = payload.key.startsWith('cron.') ? this.getEventKey(cronEvents, payload.key) : payload.key;
+        if (!eventKey) throw new FatalError(ErrorCode.FATAL.UNREGISTERED_EVENT_KEY);
+        const controllerClass = controllers[eventKey];
+        const controller = Di.container.get(controllerClass.clazz);
+        return controller[controllerClass.funcName](payload);
+      }).catch((err) => {
+        logger.error(err);
+      }).finally(() => {
+        this.eventChannel.ack(msg);
+      });
+    });
   }
 
   async consumeFanoutEvent(controllers) {
+    const cronEvents: string[] = [];
     for (const eventName of Object.keys(controllers)) {
       await this.eventChannel.bindQueue(this.fanoutQueue, EXCHANGE, eventName);
-
-      this.eventChannel.consume(this.fanoutQueue, (msg: amqp.Message) => {
-        return Bluebird.try(() => {
-          const payload: any = JSON.parse(msg.content.toString());
-          logger.debug(`[MessageDust][Fanout Event@${eventName}][REQ] ${JSON.stringify(payload)}`);
-          const controllerClass = controllers[eventName];
-          const controller = Di.container.get(controllerClass.clazz);
-          return controller[controllerClass.funcName](payload);
-        }).catch((err) => {
-          logger.error(err);
-        }).finally(() => {
-          this.eventChannel.ack(msg);
-        });
-      });
+      if (eventName.startsWith('cron.')) cronEvents.push(eventName);
     }
+
+    this.eventChannel.consume(this.fanoutQueue, (msg: amqp.Message) => {
+      return Bluebird.try(() => {
+        const payload: any = JSON.parse(msg.content.toString());
+        logger.debug(`[MessageDust][Fanout Event@${payload.key}][REQ] ${JSON.stringify(payload)}`);
+
+        const eventKey = payload.key.startsWith('cron.') ? this.getEventKey(cronEvents, payload.key) : payload.key;
+        if (!eventKey) throw new FatalError(ErrorCode.FATAL.UNREGISTERED_EVENT_KEY);
+        const controllerClass = controllers[eventKey];
+        const controller = Di.container.get(controllerClass.clazz);
+        return controller[controllerClass.funcName](payload);
+      }).catch((err) => {
+        logger.error(err);
+      }).finally(() => {
+        this.eventChannel.ack(msg);
+      });
+    });
   }
 
   async invokeRPC(rpcParam: Param.RpcParam): Promise<any> {
