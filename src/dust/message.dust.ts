@@ -184,10 +184,10 @@ export class MessageDust {
   }
 
   private getEventKey(cronEvents: string[], key: string): string {
-    const keyParts = key.slice(4).split('.')
+    const keyParts = key.split('.').slice(1);
     for (const cronEvent of cronEvents) {
-      const cronParts = cronEvent.slice(4).split('.');
-      let isMatched = false;
+      const cronParts = cronEvent.split('.').slice(1);
+      let isMatched = true;
       for (const parts of _.zip(cronParts, keyParts)) {
         if (parts[0] !== '*' && parts[0] !== parts[1]) {
           isMatched = false;
