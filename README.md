@@ -42,14 +42,16 @@ I personally you recommend to use `Controller - Service - Repository` structure 
 
 // app.ts
 
+import * as uuid4 from 'uuid/v4'
 import { Star, Decorator, Di, Auth, Param, IEvent, logger } from 'starhq';
 
-import ensureUser = Decorator.ensureUser;
-import restEndpoint = Decorator.restEndpoint;
-import rpcEndpoint = Decorator.rpcEndpoint;
-import subscribeEvent = Decorator.subscribeEvent;
+import rpc = Decorator.Endpoint.rpc;
+import rest = Decorator.Endpoint.rest;
 import Request = Param.Request;
 import inject = Di.inject;
+import Auth = IStar.Auth;
+import worker = Decorator.Event.worker;
+import fanout = Decorator.Event.fanout;
 
 // Your starting point
 class EchoStar extends Star {
@@ -70,12 +72,15 @@ new EchoStar('echo').run();
 
 // Endpoint example
 export class EndpointController {
-  constructor(@inject private service: Service) {
-  }
-
-  @restEndpoint('GET /echo')
+  @rest('GET /echo')
   async echo(req: Request): Promise<string> {
     return 'pong';
+  }
+
+  @rest('GET /echo/:id')
+  async echoUserLevel(req: Request): Promise<string> {
+    const { id } = req.params;
+    return `user id: ${id}`;
   }
 }
 
@@ -84,18 +89,25 @@ export class EchoEvent implements IEvent<string> {
   key: string;
   publishedAt: Date;
 
-  constructor(public body: string) {
-    this.key = 'hello.world';
+  constructor(public root: string, public body: string) {
+    this.key = 'user.echo';
     this.publishedAt = new Date();
   }
 }
 
 export class EventController {
-  @subscribeEvent(EchoEvent)
-  async echo(event: EchoEvent): Promise<void> {
-    const { key, body } = event;
-    logger.info(`Event ${key}: ${body}`);
+  @worker(EchoEvent)
+  async onWorker(event: EchoEvent): Promise<void> {
+    const { root, key, body } = event;
+    logger.info(`Round Robin Event ${key} : ${root} => ${body}`);
   }
+
+  @fanout('user.echo')  // use key name directly
+  async onFanout(event: EchoEvent): Promise<void> {
+    const { root, key, body } = event;
+    logger.info(`Fanout Event ${key} => ${root} => ${body}`);
+  }
+
 }
 
 // RPC example
@@ -103,7 +115,7 @@ export class RpcController {
   constructor(@inject private service: Service) {
   }
 
-  @rpcEndpoint()
+  @rpc()
   async echo(param): Promise<string> {
     return this.service.echo(param.text);
   }
@@ -117,7 +129,7 @@ class Service {
 
   async echo(text: string): Promise<string> {
     const res = await this.repository.echo(text);
-    await this.messageDust.publishEvent(new EchoEvent(res));
+    await this.messageDust.publishEvent(new EchoEvent(uuid4().toString(), res));
     return res;
   }
 }
