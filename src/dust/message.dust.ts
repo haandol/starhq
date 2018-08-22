@@ -287,10 +287,11 @@ export class MessageDust {
     });
   }
 
-  async publishEvent(event: IEvent<any>) {
+  async publishEvent(event: IEvent<any>): Promise<string> {
     const msg: string = JSON.stringify(event);
     logger.debug(`[MessageDust] Publish event: ${msg}`);
     this.eventChannel.publish(EXCHANGE, event.key, new Buffer(msg));
+    return event.root;
   }
 
 }
