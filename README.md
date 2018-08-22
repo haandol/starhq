@@ -43,13 +43,12 @@ I personally you recommend to use `Controller - Service - Repository` structure 
 // app.ts
 
 import * as uuid4 from 'uuid/v4'
-import { Star, Decorator, Di, Auth, Param, IEvent, logger } from 'starhq';
+import { Star, Decorator, Di, Param, IEvent, logger } from 'starhq';
 
 import rpc = Decorator.Endpoint.rpc;
 import rest = Decorator.Endpoint.rest;
 import Request = Param.Request;
 import inject = Di.inject;
-import Auth = IStar.Auth;
 import worker = Decorator.Event.worker;
 import fanout = Decorator.Event.fanout;
 
@@ -78,7 +77,7 @@ export class EndpointController {
   }
 
   @rest('GET /echo/:id')
-  async echoUserLevel(req: Request): Promise<string> {
+  async echoUserId(req: Request): Promise<string> {
     const { id } = req.params;
     return `user id: ${id}`;
   }
