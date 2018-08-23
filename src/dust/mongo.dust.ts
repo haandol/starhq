@@ -16,7 +16,7 @@ export class MongoDust {
     const uri = `mongodb://${URI}:${PORT}/${DB}`;
     try {
       logger.info(`[MongoDust] Creating connection to ${uri}...`);
-      await mongoose.connect(uri, { promiseLibrary: require('bluebird') });
+      await mongoose.connect(uri, { useNewUrlParser: true, promiseLibrary: require('bluebird') });
       this.db = mongoose.connection;
       logger.info(`[MongoDust] Connected.`);
     } catch (err) {

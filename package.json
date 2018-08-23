@@ -13,27 +13,27 @@
   "dependencies": {
     "amqplib": "^0.5.2",
     "bluebird": "^3.5.1",
-    "consul": "^0.33.1",
+    "consul": "^0.34.0",
     "inversify": "^4.13.0",
     "lodash": "^4.17.10",
-    "mongoose": "^5.1.5",
+    "mongoose": "^5.2.9",
     "reflect-metadata": "^0.1.12",
-    "source-map-support": "^0.5.6",
+    "source-map-support": "^0.5.9",
     "typescript": "^2.9.2",
-    "uuid": "^3.2.1",
+    "uuid": "^3.3.2",
     "var": "^0.3.2",
     "winston": "^2.4.3",
-    "winston-daily-rotate-file": "^3.2.1"
+    "winston-daily-rotate-file": "^3.3.2"
   },
   "devDependencies": {
-    "@types/amqplib": "^0.5.7",
-    "@types/bluebird": "^3.5.20",
+    "@types/amqplib": "^0.5.8",
+    "@types/bluebird": "^3.5.23",
     "@types/consul": "^0.23.32",
     "@types/jasmine": "^2.8.8",
-    "@types/lodash": "^4.14.109",
-    "@types/mongoose": "^5.0.16",
+    "@types/lodash": "^4.14.116",
+    "@types/mongoose": "^5.2.6",
     "@types/uuid": "^3.4.3",
-    "@types/winston": "^2.3.9",
-    "jasmine": "^3.1.0"
+    "@types/winston": "^2.4.4",
+    "jasmine": "^3.2.0"
   }
 }
