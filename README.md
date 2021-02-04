@@ -16,7 +16,7 @@ Client <-> [GatewayStar](https://github.com/haandol/gateway-star) <-> RabbitMQ <
 
 ## Getting Started
 
-I personally you recommend to use `Controller - Service - Repository` structure to build the app.
+I personally recommend you to use `Controller - Service - Repository` structure to build the app.
 
 - Controller takes the responsibility for the taking and validating parameters.
 - Service takes the responsilbilty for all the business logics.
